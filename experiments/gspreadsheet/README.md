@@ -1,0 +1,1 @@
+If you hit authentication issue like "http://localhost:8080" is not whitelisted for client id: xxx. Try clean browser cache in addition to double check the permission settings in google developer cache.
