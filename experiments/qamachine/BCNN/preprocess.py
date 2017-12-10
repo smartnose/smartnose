@@ -30,7 +30,7 @@ class Word2Vec:
 
 
 class DataFeeder:
-    def __init__(self, mode, sentence_length_cap=100, model_base_path = "./WikiQA_Corpus/WikiQA-"):
+    def __init__(self, mode, sentence_length_cap=100, model_base_path="./WikiQA_Corpus/WikiQA-"):
         """
         :param sentence_length_cap: truncate sentences longer than this limit
         """
@@ -55,7 +55,7 @@ class DataFeeder:
         """
         with open(self.data_path + self.mode + ".txt", "r", encoding="utf-8") as f:
             stopwords = nltk.corpus.stopwords.words("english")
-            max_sentence_length = 0
+            self.max_sentence_length = 0
             for line in f:
                 items = line[:-1].split("\t")
 
@@ -67,7 +67,7 @@ class DataFeeder:
                 answer = items[1].lower().split()[:self.sentence_length_cap]
 
                 label = int(items[2])
-                if label > 0: # if it's 1, it's a correct answer
+                if label > 0:  # if it's 1, it's a correct answer
                     self.questions.append(question)
                     self.answers.append(answer)
 
@@ -88,7 +88,9 @@ class DataFeeder:
         self.data_size = len(self.questions)
 
         # compute additional features based on IDF (inverse document frequency)
-        def flatten(l): return [token for tokenized_sentence in l for token in tokenized_sentence]
+        def flatten(l):
+            return [token for tokenized_sentence in l for token in tokenized_sentence]
+
         answer_vocabulary = set(flatten(self.answers))
         idf = {}
         for word in answer_vocabulary:
@@ -96,13 +98,15 @@ class DataFeeder:
 
         for i in range(self.data_size):
             weighted_word_cnt = sum([idf[word] for word in self.questions[i]
-                                    if(word not in stopwords) and (word in answer_vocabulary)])
+                                     if (word not in stopwords) and (word in answer_vocabulary)])
             self.engineered_features[i].append(weighted_word_cnt)
 
         self.engineered_feature_count = len(self.engineered_features[0])
 
     def has_more(self):
-        """ Has the batch iterator run out? """
+        """
+        Has the batch iterator run out?
+        """
         return self.index < self.data_size
 
     def convert2tensor(self, tokenized_sentence):
@@ -116,8 +120,8 @@ class DataFeeder:
         :return: a tensor of dimensions [1, word_vector_length, sentence_length]
         """
         padded_sentence = np.pad(np.column_stack([self.word2vec.get(w) for w in tokenized_sentence]),
-               [[0, 0], [0, self.max_sentence_length - len(tokenized_sentence)]],
-               "constant")
+                                 [[0, 0], [0, self.max_sentence_length - len(tokenized_sentence)]],
+                                 "constant")
         return np.expand_dims(padded_sentence, axis=0)
 
     def next_batch(self, batch_size):
@@ -142,7 +146,11 @@ class DataFeeder:
         return combined_question_tensor, combined_answer_tensor, label_vector, batch_engineered_features
 
     @staticmethod
-    def multiplex(questions, answers, sample_size):
+    def reset_seed(seed):
+        nprnd.seed(seed)
+
+    @staticmethod
+    def multiplex_training_pairs(questions, answers, sample_size):
         """
             Given questions and answers pairs, generate training pairs and labels.
             In our Q&A settings, our input only has pairs of (question, correct_answer), i.e.,
@@ -164,7 +172,18 @@ class DataFeeder:
         :return:
         """
         assert len(questions) == len(answers)
+        question_count = len(questions)
+        expanded_questions, expanded_answers, labels = [], [], []
+        for i in range(len(questions)):
+            # append the positive pair first
+            expanded_questions.append(questions[i])
+            expanded_answers.append(answers[i])
+            labels.append(1)
 
-        for q in questions:
-            nprnd.randint(0,)
+            # now append the randomly generated negative pairs
+            idx = nprnd.randint(0, question_count, sample_size)
+            expanded_questions.extend([questions[i] for j in idx])
+            expanded_answers.extend([answers[j] for j in idx])
+            labels.extend([1 if j == i else 0 for j in idx])
 
+        return expanded_questions, expanded_answers, labels
