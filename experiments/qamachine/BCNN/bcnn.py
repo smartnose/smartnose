@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
+
 class BCNN:
     def __init__(self, s, w, l2_reg, model_type, num_features, d0=300, di=50, num_classes=2, num_layers=2):
         """
@@ -25,11 +26,10 @@ class BCNN:
         # engineered features
         self.features = tf.placeholder(tf.float32, shape=[None, num_features], name="features")
 
-
         def pad_for_wide_conv(x):
             """
-                Zero padding a matrix for wide-convolution
-            :param x:
+                Zero padding a tensor for wide-convolution
+            :param x: tensor of shape [number_of_sentences, word_vector_dimension , sentence_length,
             :return:
             """
             return tf.pad(x, np.array([[0, 0], [0, 0], [w - 1, w - 1], [0, 0]]), "CONSTANT", name="pad_wide_conv")

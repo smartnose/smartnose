@@ -5,6 +5,9 @@ import numpy.random as nprnd
 
 
 class Word2Vec:
+    """
+        Wrapper of pre-trained google word2vec model
+    """
     def __init__(self):
         """
             Creates a word2vec helper given the dimension of a word vector
@@ -30,7 +33,9 @@ class Word2Vec:
 
 
 class DataFeeder:
-    def __init__(self, mode, sentence_length_cap=100, model_base_path="./WikiQA_Corpus/WikiQA-"):
+    def __init__(self, mode, sentence_length_cap=50,
+                 model_base_path="../WikiQACorpus/WikiQA-",
+                 multiplex_sample_size=5):
         """
         :param sentence_length_cap: truncate sentences longer than this limit
         """
@@ -47,6 +52,7 @@ class DataFeeder:
         assert mode == 'train' or mode == 'test'
         self.word2vec = Word2Vec
         self.max_sentence_length = 0
+        self.multiplex_sample_size = multiplex_sample_size
 
     def load_data(self):
         """
@@ -67,7 +73,10 @@ class DataFeeder:
                 answer = items[1].lower().split()[:self.sentence_length_cap]
 
                 label = int(items[2])
-                if label > 0:  # if it's 1, it's a correct answer
+                # Only keep the correct question-answer pair, and
+                # ignore the rest because we are dealing with a different problem here than the classic
+                # Answer-selection problem
+                if label > 0:
                     self.questions.append(question)
                     self.answers.append(answer)
 
@@ -81,9 +90,8 @@ class DataFeeder:
                     if local_max_len > self.max_sentence_length:
                         self.max_sentence_length = local_max_len
 
-        print "Max sentence length:{}".format(local_max_len)
+        print("Max sentence length:{}".format(local_max_len))
         assert len(self.questions) == len(self.answers), "there must be equal number of questions and answers"
-        assert len(self.questions) == len(self.labels), "there must be equal number of questions and labels"
 
         self.data_size = len(self.questions)
 
@@ -136,9 +144,11 @@ class DataFeeder:
             answer_tensors.append(self.convert2tensor(s2))
 
         # [batch_size, word_vector_length, sentence_length]
+        expanded_question, expanded_answers, label_vector = self.multiplex_training_pairs(question_tensors,
+                                                                                          answer_tensors,
+                                                                                          self.multiplex_sample_size)
         combined_question_tensor = np.concatenate(question_tensors, axis=0)
         combined_answer_tensor = np.concatenate(answer_tensors, axis=0)
-        label_vector = self.labels[self.index:self.index + batch_size]
         batch_engineered_features = self.engineered_features[self.index:self.index + batch_size]
 
         self.index += batch_size
@@ -187,3 +197,7 @@ class DataFeeder:
             labels.extend([1 if j == i else 0 for j in idx])
 
         return expanded_questions, expanded_answers, labels
+
+if __name__ == '__main__':
+    feeder = DataFeeder('train')
+    feeder.load_data()
