@@ -59,7 +59,7 @@ class BCNN:
                         inputs=x,
                         num_outputs=di,
                         kernel_size=(d, w),
-                        stride=1,
+                        tride=1,
                         padding="VALID",
                         activation_fn=tf.nn.tanh,
                         weights_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
